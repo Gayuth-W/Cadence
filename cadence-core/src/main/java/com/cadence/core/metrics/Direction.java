@@ -24,4 +24,12 @@ public enum Direction {
     public boolean breaches(double observed, double threshold) {
         return this == LOWER_IS_BETTER ? observed > threshold : observed < threshold;
     }
+
+    /**
+     * @return true when {@code candidate} is worse than {@code baseline}. Used to
+     *         make the canary gate one-sided.
+     */
+    public boolean isWorse(double candidate, double baseline) {
+        return this == LOWER_IS_BETTER ? candidate > baseline : candidate < baseline;
+    }
 }
