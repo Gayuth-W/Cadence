@@ -41,4 +41,18 @@ public final class BucketAssigner {
         // negative bucket.
         return Math.floorMod(hash, TOTAL_BUCKETS);
     }
+
+    /**
+     * @param rolloutPercentage 0–100
+     * @return true when this user falls inside the rollout slice
+     */
+    public static boolean inRollout(String flagKey, String userId, int rolloutPercentage) {
+        if (rolloutPercentage <= 0) {
+            return false;
+        }
+        if (rolloutPercentage >= 100) {
+            return true;
+        }
+        return bucket(flagKey, userId) < rolloutPercentage * (TOTAL_BUCKETS / 100);
+    }
 }
