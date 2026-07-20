@@ -35,6 +35,64 @@ public final class TargetingEngine {
     private TargetingEngine() {
     }
 
+    public static EvaluationResult evaluate(FlagDefinition flag, UserContext ctx) {
+        Map<String, Object> baseline = flag.baselineConfig();
+        Map<String, Object> candidate = flag.candidateConfig();
+
+        // ---- 1. Terminal states short-circuit everything, including targeting. ----
+        // A rolled-back flag must not honour an allowlist: "rolled back" means nobody,
+        // no exceptions.
+        switch (flag.state()) {
+            case OFF -> {
+                return EvaluationResult.baseline(flag.key(), baseline, EvaluationReason.FLAG_OFF);
+            }
+            case ROLLED_BACK -> {
+                return EvaluationResult.baseline(flag.key(), baseline, EvaluationReason.ROLLED_BACK);
+            }
+            case FULLY_ON -> {
+                return new EvaluationResult(flag.key(), VariantName.CANDIDATE, candidate,
+                        EvaluationReason.FULLY_ON, -1, false);
+            }
+            case SHADOW -> {
+                // The user is served baseline; the shadow flag tells the SDK to also execute
+                // the
+                // candidate on a virtual thread and report its metrics.
+                return new EvaluationResult(flag.key(), VariantName.BASELINE, baseline,
+                        EvaluationReason.SHADOW_BASELINE, -1, true);
+            }
+            default -> {
+                // ROLLING_OUT and PAUSED both serve a real split; fall through.
+            }
+        }
+
+        // ---- 2. Targeting rules, in priority order. ----
+        for (TargetingRule rule : flag.targeting().rules()) {
+            if (matches(rule, ctx)) {
+                VariantName variant = rule.variant();
+                return new EvaluationResult(
+                        flag.key(),
+                        variant,
+                        variant == VariantName.CANDIDATE ? candidate : baseline,
+                        EvaluationReason.TARGETING_MATCH,
+                        -1,
+                        false);
+            }
+        }
+
+        // ---- 3. Stable percentage bucketing. ----
+        int bucket = BucketAssigner.bucket(flag.key(), ctx.userId());
+        int threshold = flag.rolloutPercentage() * (BucketAssigner.TOTAL_BUCKETS / 100);
+        boolean inRollout = bucket < threshold;
+
+        return new EvaluationResult(
+                flag.key(),
+                inRollout ? VariantName.CANDIDATE : VariantName.BASELINE,
+                inRollout ? candidate : baseline,
+                inRollout ? EvaluationReason.PERCENTAGE_ROLLOUT : EvaluationReason.PERCENTAGE_EXCLUDED,
+                bucket,
+                false);
+    }
+
     private static boolean matches(TargetingRule rule, UserContext ctx) {
         return switch (rule.type()) {
             case ALLOWLIST, BLOCKLIST -> rule.values().contains(ctx.userId());
