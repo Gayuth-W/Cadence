@@ -187,4 +187,24 @@ public class FeatureFlagService {
                 request.reason() == null ? "Flag configuration updated" : request.reason());
         return flag;
     }
+
+    @Transactional
+    @PreAuthorize("hasRole('ADMIN')")
+    public void delete(UUID id) {
+        FeatureFlag flag = get(id);
+        if (flag.getState().servesCandidate() && flag.getRolloutPercentage() > 0) {
+            // Deleting a live flag would strand every SDK on its last cached copy while the
+            // platform
+            // stops watching its health. Withdraw it first, then delete.
+            throw new ConflictException(
+                    "Flag '%s' is live at %d%%. Roll it back before deleting."
+                            .formatted(flag.getKey(), flag.getRolloutPercentage()));
+        }
+        String before = json.toJson(flag.toDefinition());
+        repository.delete(flag);
+        // flagId is retained on the record even though the row is gone; the trail
+        // outlives the flag.
+        auditService.record(AuditAction.FLAG_DELETED, flag.getId(), flag.getKey(),
+                before, null, "Flag deleted");
+    }
 }
