@@ -114,4 +114,23 @@ public class SecurityConfig {
         // API keys.
         return new BCryptPasswordEncoder(12);
     }
+
+    @Bean
+    public DaoAuthenticationProvider authenticationProvider(UserDetailsService userDetailsService,
+            PasswordEncoder passwordEncoder) {
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
+        provider.setUserDetailsService(userDetailsService);
+        provider.setPasswordEncoder(passwordEncoder);
+        // Do not reveal whether the username exists. Without this, a failed login for a
+        // real user
+        // takes a bcrypt round longer than for a nonexistent one, which is a timing
+        // oracle.
+        provider.setHideUserNotFoundExceptions(true);
+        return provider;
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
+    }
 }
