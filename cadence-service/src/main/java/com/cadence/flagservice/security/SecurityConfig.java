@@ -63,4 +63,26 @@ public class SecurityConfig {
         this.authenticationEntryPoint = authenticationEntryPoint;
         this.accessDeniedHandler = accessDeniedHandler;
     }
+
+    /** Data plane. Ordered first so {@code /sdk/**} never reaches the JWT chain. */
+    @Bean
+    @Order(1)
+    public SecurityFilterChain sdkFilterChain(HttpSecurity http) throws Exception {
+        http
+                .securityMatcher("/sdk/v1/**")
+                .csrf(csrf -> csrf.disable())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.GET, "/sdk/v1/flags/**")
+                        .hasAuthority(ApiKeyScope.FLAGS_READ.authority())
+                        .requestMatchers(HttpMethod.POST, "/sdk/v1/evaluate")
+                        .hasAuthority(ApiKeyScope.FLAGS_READ.authority())
+                        .anyRequest().denyAll())
+                .addFilterBefore(apiKeyFilter, UsernamePasswordAuthenticationFilter.class)
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint(authenticationEntryPoint)
+                        .accessDeniedHandler(accessDeniedHandler));
+        return http.build();
+    }
 }
