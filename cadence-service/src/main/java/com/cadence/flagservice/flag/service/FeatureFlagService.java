@@ -89,4 +89,13 @@ public class FeatureFlagService {
         return repository.findByKeyAndEnvironment(key, properties.getEnvironment())
                 .orElseThrow(() -> NotFoundException.flag(key));
     }
+
+    /**
+     * Unsecured on purpose: called from schedulers, and from the data plane after
+     * scope authorisation.
+     */
+    @Transactional(readOnly = true)
+    public FeatureFlag get(UUID id) {
+        return repository.findById(id).orElseThrow(() -> NotFoundException.flag(id));
+    }
 }
