@@ -104,4 +104,15 @@ public class FeatureFlagService {
         return repository.findAllByEnvironmentAndStateIn(properties.getEnvironment(),
                 List.of(FlagState.ROLLING_OUT, FlagState.SHADOW));
     }
+
+    /**
+     * Data-plane read, authorised by API-key scope in the security chain, scoped to
+     * the key's environment.
+     */
+    @Transactional(readOnly = true)
+    public List<FlagDefinition> definitionsFor(String environment) {
+        return repository.findAllByEnvironment(environment).stream()
+                .map(FeatureFlag::toDefinition)
+                .toList();
+    }
 }
