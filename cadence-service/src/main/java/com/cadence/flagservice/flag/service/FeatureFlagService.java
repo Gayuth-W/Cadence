@@ -53,6 +53,10 @@ public class FeatureFlagService {
     private final CadenceProperties properties;
     private final CurrentActor currentActor;
     private final JsonUtils json;
+
+    // Both are leaf beans (Redis + properties only). Depending on
+    // RollbackWatcherService instead would
+    // close a cycle, since the watcher already depends on this service.
     private final RollbackGuardState guardState;
 
     public FeatureFlagService(FeatureFlagRepository repository,
@@ -157,5 +161,30 @@ public class FeatureFlagService {
         auditService.record(AuditAction.FLAG_CREATED, saved.getId(), saved.getKey(),
                 null, json.toJson(saved.toDefinition()), "Flag created");
         return saved;
+    }
+
+    @Transactional
+    @PreAuthorize("hasRole('ADMIN')")
+    public FeatureFlag update(UUID id, UpdateFlagRequest request) {
+        FeatureFlag flag = get(id);
+        String before = json.toJson(flag.toDefinition());
+
+        if (request.description() != null)
+            flag.setDescription(request.description());
+        if (request.baselineConfig() != null)
+            flag.setBaselineConfig(request.baselineConfig());
+        if (request.candidateConfig() != null)
+            flag.setCandidateConfig(request.candidateConfig());
+        if (request.targetingRules() != null)
+            flag.setTargetingRules(request.targetingRules());
+        if (request.healthMetrics() != null)
+            flag.setHealthMetrics(request.healthMetrics());
+        if (request.rollbackTrigger() != null)
+            flag.setRollbackTrigger(request.rollbackTrigger());
+
+        auditService.record(AuditAction.FLAG_UPDATED, flag.getId(), flag.getKey(),
+                before, json.toJson(flag.toDefinition()),
+                request.reason() == null ? "Flag configuration updated" : request.reason());
+        return flag;
     }
 }
