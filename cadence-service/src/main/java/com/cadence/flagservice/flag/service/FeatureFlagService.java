@@ -98,4 +98,10 @@ public class FeatureFlagService {
     public FeatureFlag get(UUID id) {
         return repository.findById(id).orElseThrow(() -> NotFoundException.flag(id));
     }
+
+    @Transactional(readOnly = true)
+    public List<FeatureFlag> findActiveRollouts() {
+        return repository.findAllByEnvironmentAndStateIn(properties.getEnvironment(),
+                List.of(FlagState.ROLLING_OUT, FlagState.SHADOW));
+    }
 }
