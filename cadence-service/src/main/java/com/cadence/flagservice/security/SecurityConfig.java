@@ -107,4 +107,11 @@ public class SecurityConfig {
                         .accessDeniedHandler(accessDeniedHandler));
         return http.build();
     }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        // Strength 12: human passwords need key-stretching, unlike the 256-bit service
+        // API keys.
+        return new BCryptPasswordEncoder(12);
+    }
 }
