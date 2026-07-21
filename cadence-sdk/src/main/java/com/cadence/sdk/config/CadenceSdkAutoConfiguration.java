@@ -87,4 +87,49 @@ public class CadenceSdkAutoConfiguration {
             CadenceSdkProperties properties) {
         return new FlagClient(cache, reporter, shadowExecutor, properties.isEnabled());
     }
+
+    /**
+     * Primes the cache at startup and keeps it warm. Registered as its own bean so
+     * the scheduled
+     * method is proxied correctly and so the initial (blocking) load happens once,
+     * at boot, before
+     * the application starts serving traffic.
+     */
+    @Bean
+    public FlagConfigRefresher cadenceFlagConfigRefresher(FlagConfigCache cache, CadenceSdkProperties properties) {
+        return new FlagConfigRefresher(cache, properties.getRefreshInterval());
+    }
+
+    public static class FlagConfigRefresher implements InitializingBean, DisposableBean {
+
+        private final FlagConfigCache cache;
+        private final Duration interval;
+
+        public FlagConfigRefresher(FlagConfigCache cache, Duration interval) {
+            this.cache = cache;
+            this.interval = interval;
+        }
+
+        @Override
+        public void afterPropertiesSet() {
+            // Best-effort initial load. A failure here is logged, not fatal: an application
+            // must be
+            // able to boot while the flag control plane is down.
+            cache.refresh();
+        }
+
+        @Scheduled(fixedDelayString = "${cadence.sdk.refresh-interval:PT15S}")
+        public void refresh() {
+            cache.refresh();
+        }
+
+        public Duration interval() {
+            return interval;
+        }
+
+        @Override
+        public void destroy() {
+            // nothing to release; the scheduler is owned by Spring
+        }
+    }
 }
