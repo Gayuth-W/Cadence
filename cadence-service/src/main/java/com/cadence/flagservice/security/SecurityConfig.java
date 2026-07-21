@@ -85,4 +85,26 @@ public class SecurityConfig {
                         .accessDeniedHandler(accessDeniedHandler));
         return http.build();
     }
+
+    /** Control plane. */
+    @Bean
+    @Order(2)
+    public SecurityFilterChain managementFilterChain(HttpSecurity http) throws Exception {
+        http
+                // Stateless JWT, no cookies, no session: nothing for CSRF to protect.
+                .csrf(csrf -> csrf.disable())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/v1/auth/login").permitAll()
+                        .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
+                        .requestMatchers("/actuator/prometheus").hasAnyRole("ADMIN", "OPERATOR")
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        .anyRequest().authenticated())
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint(authenticationEntryPoint)
+                        .accessDeniedHandler(accessDeniedHandler));
+        return http.build();
+    }
 }
