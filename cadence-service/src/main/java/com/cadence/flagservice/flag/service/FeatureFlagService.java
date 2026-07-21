@@ -115,4 +115,15 @@ public class FeatureFlagService {
                 .map(FeatureFlag::toDefinition)
                 .toList();
     }
+
+    /**
+     * Server-side evaluation for non-Java callers. Runs the identical engine the
+     * SDK runs.
+     */
+    @Transactional(readOnly = true)
+    public EvaluationResult evaluate(String flagKey, String environment, UserContext ctx) {
+        return repository.findByKeyAndEnvironment(flagKey, environment)
+                .map(flag -> TargetingEngine.evaluate(flag.toDefinition(), ctx))
+                .orElseThrow(() -> NotFoundException.flag(flagKey));
+    }
 }
