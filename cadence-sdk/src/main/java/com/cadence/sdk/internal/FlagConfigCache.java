@@ -15,24 +15,21 @@ import java.util.function.Supplier;
 
 /**
  * The SDK's local view of every flag, refreshed in the background.
- *
- * <p>
  * Evaluation must be a sub-microsecond in-memory lookup, not a network call: if
  * {@code flagClient.evaluate()} did HTTP, every flag check would add a round
  * trip to a user request
  * and the flag platform would become the thing that needs a flag to turn it
  * off.
  *
- * <p>
  * Failure behaviour is the whole point of this class. The refresh is wrapped in
  * a Resilience4j
  * circuit breaker; when the control plane is unreachable the breaker opens, the
  * refresh stops
- * hammering it, and the cache keeps serving <b>the last successfully fetched
- * snapshot</b>. If the SDK
+ * hammering it, and the cache keeps serving the last successfully fetched
+ * snapshot. If the SDK
  * has never fetched anything (control plane down at boot), the cache is empty,
  * {@code find()} returns
- * empty, and {@link com.cadence.sdk.FlagClient} degrades to baseline — the safe
+ * empty, and {@link com.cadence.sdk.FlagClient} degrades to baseline - the safe
  * direction.
  */
 public class FlagConfigCache {
@@ -71,5 +68,33 @@ public class FlagConfigCache {
 
     public long size() {
         return cache.estimatedSize();
+    }
+
+    /**
+     * Pull the latest config. Never throws: a failed refresh is a logged warning,
+     * not an outage.
+     *
+     * @return true when the snapshot was replaced
+     */
+    public boolean refresh() {
+        Supplier<List<FlagDefinition>> guarded = CircuitBreaker.decorateSupplier(circuitBreaker,
+                apiClient::fetchAllFlags);
+        try {
+            List<FlagDefinition> flags = guarded.get();
+            // Replace wholesale so a flag deleted upstream disappears locally instead of
+            // lingering forever.
+            cache.invalidateAll();
+            flags.forEach(flag -> cache.put(flag.key(), flag));
+            if (everLoaded.compareAndSet(false, true)) {
+                log.info("Cadence SDK primed with {} flag(s)", flags.size());
+            } else {
+                log.debug("Cadence SDK refreshed {} flag(s)", flags.size());
+            }
+            return true;
+        } catch (Exception e) {
+            log.warn("Cadence config refresh failed (breaker={}); serving last known-good snapshot of {} flag(s): {}",
+                    circuitBreaker.getState(), cache.estimatedSize(), e.getMessage());
+            return false;
+        }
     }
 }
