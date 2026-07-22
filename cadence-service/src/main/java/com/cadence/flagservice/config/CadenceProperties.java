@@ -126,4 +126,187 @@ public class CadenceProperties {
             this.cooldown = cooldown;
         }
     }
+
+    public static class Canary {
+        private boolean enabled = true;
+        /**
+         * Significance level. p below this, in the worse direction, blocks the advance.
+         */
+        private double alpha = 0.05;
+        /**
+         * Below this many samples per side, the test has no power and the gate
+         * abstains.
+         */
+        private int minSamples = 30;
+        private WindowType window = WindowType.LAST_1H;
+        /**
+         * Cap on samples pulled per side; Mann-Whitney is O(n log n) and 5k per side is
+         * ample.
+         */
+        private int maxSamples = 5_000;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public double getAlpha() {
+            return alpha;
+        }
+
+        public void setAlpha(double alpha) {
+            this.alpha = alpha;
+        }
+
+        public int getMinSamples() {
+            return minSamples;
+        }
+
+        public void setMinSamples(int minSamples) {
+            this.minSamples = minSamples;
+        }
+
+        public WindowType getWindow() {
+            return window;
+        }
+
+        public void setWindow(WindowType window) {
+            this.window = window;
+        }
+
+        public int getMaxSamples() {
+            return maxSamples;
+        }
+
+        public void setMaxSamples(int maxSamples) {
+            this.maxSamples = maxSamples;
+        }
+    }
+
+    public static class Metrics {
+        /** How often a MetricSnapshot row is written for historical charting. */
+        private Duration snapshotInterval = Duration.ofMinutes(5);
+        /**
+         * Hard cap on events retained per rolling window, protecting Redis memory under
+         * a traffic spike.
+         */
+        private int maxWindowSize = 50_000;
+        /** Concurrency ceiling for the virtual-thread ingestion executor. */
+        private int ingestionConcurrency = 512;
+
+        public Duration getSnapshotInterval() {
+            return snapshotInterval;
+        }
+
+        public void setSnapshotInterval(Duration v) {
+            this.snapshotInterval = v;
+        }
+
+        public int getMaxWindowSize() {
+            return maxWindowSize;
+        }
+
+        public void setMaxWindowSize(int v) {
+            this.maxWindowSize = v;
+        }
+
+        public int getIngestionConcurrency() {
+            return ingestionConcurrency;
+        }
+
+        public void setIngestionConcurrency(int v) {
+            this.ingestionConcurrency = v;
+        }
+    }
+
+    public static class Alerting {
+        private boolean enabled = false;
+        /** Slack incoming-webhook URL. Read from the environment; never committed. */
+        private String slackWebhookUrl;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public String getSlackWebhookUrl() {
+            return slackWebhookUrl;
+        }
+
+        public void setSlackWebhookUrl(String v) {
+            this.slackWebhookUrl = v;
+        }
+    }
+
+    public static class ExternalMetrics {
+        /**
+         * When enabled, release health can additionally be pulled from Prometheus via
+         * WebClient.
+         */
+        private boolean enabled = false;
+        private String prometheusBaseUrl = "http://localhost:9090";
+        private Duration timeout = Duration.ofSeconds(5);
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public String getPrometheusBaseUrl() {
+            return prometheusBaseUrl;
+        }
+
+        public void setPrometheusBaseUrl(String v) {
+            this.prometheusBaseUrl = v;
+        }
+
+        public Duration getTimeout() {
+            return timeout;
+        }
+
+        public void setTimeout(Duration timeout) {
+            this.timeout = timeout;
+        }
+    }
+
+    public String getEnvironment() {
+        return environment;
+    }
+
+    public void setEnvironment(String environment) {
+        this.environment = environment;
+    }
+
+    public Jwt getJwt() {
+        return jwt;
+    }
+
+    public Rollback getRollback() {
+        return rollback;
+    }
+
+    public Canary getCanary() {
+        return canary;
+    }
+
+    public Metrics getMetrics() {
+        return metrics;
+    }
+
+    public Alerting getAlerting() {
+        return alerting;
+    }
+
+    public ExternalMetrics getExternalMetrics() {
+        return externalMetrics;
+    }
 }
