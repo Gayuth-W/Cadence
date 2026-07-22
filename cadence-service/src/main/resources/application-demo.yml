@@ -1,0 +1,19 @@
+# Compresses the timescales so the whole closed loop is observable inside two minutes.
+# Never use these values anywhere real: three consecutive bad ticks is noise, not a regression.
+cadence:
+  rollback:
+    check-interval: PT5S
+    consecutive-breaches: 3
+    min-samples: 10
+    cooldown: PT1M
+  canary:
+    min-samples: 20
+  metrics:
+    snapshot-interval: PT5S
+  rollout:
+    reconcile-interval: PT5S
+
+logging:
+  level:
+    com.cadence.flagservice.metrics: DEBUG
+    com.cadence.flagservice.rollout: DEBUG
