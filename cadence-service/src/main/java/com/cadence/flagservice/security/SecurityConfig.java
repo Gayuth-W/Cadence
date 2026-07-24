@@ -78,6 +78,8 @@ public class SecurityConfig {
                         .hasAuthority(ApiKeyScope.FLAGS_READ.authority())
                         .requestMatchers(HttpMethod.POST, "/sdk/v1/evaluate")
                         .hasAuthority(ApiKeyScope.FLAGS_READ.authority())
+                        .requestMatchers(HttpMethod.POST, "/sdk/v1/events")
+                        .hasAuthority(ApiKeyScope.EVENTS_WRITE.authority())
                         .anyRequest().denyAll())
                 .addFilterBefore(apiKeyFilter, UsernamePasswordAuthenticationFilter.class)
                 .exceptionHandling(ex -> ex
@@ -100,6 +102,7 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
                         .requestMatchers("/actuator/prometheus").hasAnyRole("ADMIN", "OPERATOR")
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers("/ws/**").permitAll() // STOMP CONNECT frame carries the token
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .exceptionHandling(ex -> ex
