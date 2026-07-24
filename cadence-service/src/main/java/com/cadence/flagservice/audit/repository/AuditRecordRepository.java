@@ -20,6 +20,16 @@ public interface AuditRecordRepository extends JpaRepository<AuditRecord, UUID> 
 
         Page<AuditRecord> findAllByOrderByCreatedAtDesc(Pageable pageable);
 
+        /** Every rollback, human or automatic, for the analytics view. */
+        @Query("""
+                        select a from AuditRecord a
+                        where a.flagId = :flagId
+                          and a.action in (com.cadence.flagservice.audit.domain.AuditAction.ROLLBACK_FORCED,
+                                           com.cadence.flagservice.audit.domain.AuditAction.ROLLBACK_AUTOMATIC)
+                        order by a.createdAt desc
+                        """)
+        List<AuditRecord> findRollbacks(@Param("flagId") UUID flagId);
+
         List<AuditRecord> findByFlagIdAndActionAndCreatedAtAfterOrderByCreatedAtDesc(
                         UUID flagId, AuditAction action, Instant after);
 }
