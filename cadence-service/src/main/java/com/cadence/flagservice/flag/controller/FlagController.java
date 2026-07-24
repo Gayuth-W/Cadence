@@ -114,4 +114,10 @@ public class FlagController {
     public FlagResponse reset(@PathVariable UUID id, @Valid @RequestBody ReasonRequest request) {
         return mapper.toResponse(flagService.reset(id, request.reason()));
     }
+
+    @PostMapping("/{id}/shadow")
+    @Operation(summary = "Dark-launch the candidate: users see baseline, the candidate runs in the background. ADMIN.")
+    public FlagResponse shadow(@PathVariable UUID id, @Valid @RequestBody ReasonRequest request) {
+        return mapper.toResponse(flagService.enableShadow(id, request.reason()));
+    }
 }
