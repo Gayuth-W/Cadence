@@ -79,6 +79,26 @@ public class SdkController {
     }
 
     /**
+     * Ingest a batch of outcome events.
+     *
+     * <p>
+     * Returns {@code 202 Accepted} the moment the payload is deserialised. The
+     * actual fan-out into
+     * Redis windows happens on a virtual thread, so a slow Redis never becomes
+     * latency in a caller's
+     * fire-and-forget flush, and a burst of a hundred thousand events never
+     * exhausts a thread pool.
+     */
+    @PostMapping("/events")
+    @Operation(summary = "Report outcome events. Accepted asynchronously; never blocks the caller.")
+    public ResponseEntity<Void> events(@RequestBody EventBatch batch) {
+        if (!batch.isEmpty()) {
+            ingestionService.ingestAsync(batch);
+        }
+        return ResponseEntity.status(HttpStatus.ACCEPTED).build();
+    }
+
+    /**
      * The environment comes from the authenticated key, not from a request
      * parameter. A staging key
      * must not be able to read production flag config by changing a header.
