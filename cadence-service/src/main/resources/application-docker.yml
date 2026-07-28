@@ -1,0 +1,10 @@
+# Activated with SPRING_PROFILES_ACTIVE=docker by docker-compose.
+spring:
+  datasource:
+    url: jdbc:postgresql://postgres:5432/cadence
+  data:
+    redis:
+      host: redis
+
+cadence:
+  environment: development

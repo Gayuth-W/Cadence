@@ -1,0 +1,32 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+
+cadence:
+  environment: test
+  jwt:
+    # Test-only secret. Long enough to satisfy the >= 32 byte HS256 requirement.
+    secret: test-secret-that-is-definitely-long-enough-for-hs256-abcdef
+    expiration: PT1H
+  rollback:
+    # Enabled, because watch() short-circuits when it is not — the tests invoke watch() directly.
+    # The interval is pushed out to an hour so the scheduler never races an assertion.
+    enabled: true
+    check-interval: PT1H
+    consecutive-breaches: 3
+    min-samples: 5
+  canary:
+    min-samples: 10
+  metrics:
+    snapshot-interval: PT1H
+  rollout:
+    reconcile-interval: PT1H
+  alerting:
+    enabled: false
+
+logging:
+  level:
+    org.springframework.security: WARN

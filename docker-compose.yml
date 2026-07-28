@@ -1,0 +1,24 @@
+name: cadence
+
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: cadence
+      POSTGRES_USER: cadence
+      POSTGRES_PASSWORD: cadence
+    ports:
+      - "5432:5432"
+    volumes:
+      - cadence-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # The control plane runs Flyway at startup. Without this gate it would race Postgres's
+      # own bootstrap and die on the first migration.
+      test: ["CMD-SHELL", "pg_isready -U cadence -d cadence"]
+      interval: 3s
+      timeout: 3s
+      retries: 15
+
+volumes:
+  cadence-pgdata:
