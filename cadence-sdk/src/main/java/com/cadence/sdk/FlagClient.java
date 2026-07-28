@@ -111,4 +111,136 @@ public class FlagClient {
     public boolean isEnabled(String flagKey, UserContext ctx) {
         return evaluate(flagKey, ctx).isCandidate();
     }
+
+    // ------------------------------------------------------------------
+    // Guarded execution: the recommended integration
+    // ------------------------------------------------------------------
+
+    /**
+     * Evaluate the flag, run the chosen implementation, and report the outcome. In
+     * {@link com.cadence.core.model.FlagState#SHADOW} state the baseline result is
+     * returned to the
+     * user while the candidate executes on a virtual thread and its latency, errors
+     * and output diff
+     * are recorded.
+     *
+     * <p>
+     * Exceptions from the chosen implementation are reported as failure events and
+     * then rethrown:
+     * the SDK observes your errors, it does not swallow them.
+     */
+    public <T> T run(String flagKey, UserContext ctx, Supplier<T> baseline, Supplier<T> candidate) {
+        EvaluationResult result = evaluate(flagKey, ctx);
+
+        if (result.shadow()) {
+            return runShadowed(flagKey, ctx, result, baseline, candidate);
+        }
+
+        Supplier<T> chosen = result.isCandidate() ? candidate : baseline;
+        long start = System.nanoTime();
+        try {
+            T value = chosen.get();
+            reportOutcome(flagKey, result, elapsedMs(start), true, null, EventType.LIVE, null, ctx.userId());
+            return value;
+        } catch (RuntimeException e) {
+            reportOutcome(flagKey, result, elapsedMs(start), false, e.getClass().getSimpleName(),
+                    EventType.LIVE, null, ctx.userId());
+            throw e;
+        }
+    }
+
+    private <T> T runShadowed(String flagKey, UserContext ctx, EvaluationResult result,
+            Supplier<T> baseline, Supplier<T> candidate) {
+        long start = System.nanoTime();
+        T baselineValue;
+        try {
+            baselineValue = baseline.get();
+        } catch (RuntimeException e) {
+            reportOutcome(flagKey, result, elapsedMs(start), false, e.getClass().getSimpleName(),
+                    EventType.LIVE, null, ctx.userId());
+            throw e;
+        }
+        long baselineLatency = elapsedMs(start);
+        reportOutcome(flagKey, result, baselineLatency, true, null, EventType.LIVE, null, ctx.userId());
+
+        final T captured = baselineValue;
+        shadowExecutor.runShadow(candidate::get, (candidateValue, latencyMs, error) -> {
+            String diff = error != null ? null : describeDiff(captured, candidateValue);
+            OutcomeEvent event = new OutcomeEvent(
+                    flagKey,
+                    VariantName.CANDIDATE,
+                    EventType.SHADOW,
+                    latencyMs,
+                    error == null,
+                    error == null ? null : error.getClass().getSimpleName(),
+                    Map.of("baseline_latency_ms", (double) baselineLatency),
+                    diff,
+                    ctx.userId(),
+                    result.reason(),
+                    Instant.now());
+            eventReporter.report(event);
+        });
+
+        return baselineValue;
+    }
+
+    /**
+     * Cheap, bounded description of how the shadow output differed. The full
+     * objects are never sent:
+     * they may contain user data, and the control plane has no business storing it.
+     */
+    private String describeDiff(Object baselineValue, Object candidateValue) {
+        if (Objects.equals(baselineValue, candidateValue)) {
+            return null;
+        }
+        String b = String.valueOf(baselineValue);
+        String c = String.valueOf(candidateValue);
+        return "baseline=%s candidate=%s".formatted(truncate(b), truncate(c));
+    }
+
+    private static String truncate(String s) {
+        return s.length() <= 120 ? s : s.substring(0, 117) + "...";
+    }
+
+    // ------------------------------------------------------------------
+    // Manual reporting, for callers that cannot wrap their code in run()
+    // ------------------------------------------------------------------
+
+    /**
+     * Report a custom business metric (conversion, cart value, ...) against a
+     * previous evaluation.
+     */
+    public void recordCustomMetric(String flagKey, VariantName variant, String userId, Map<String, Double> metrics) {
+        eventReporter.report(new OutcomeEvent(flagKey, variant, EventType.LIVE, 0, true,
+                null, metrics, null, userId, null, Instant.now()));
+    }
+
+    /** Report an outcome the SDK did not itself execute. */
+    public void recordOutcome(String flagKey, VariantName variant, long latencyMs, boolean success, String errorType) {
+        eventReporter.report(new OutcomeEvent(flagKey, variant, EventType.LIVE, latencyMs, success,
+                errorType, Map.of(), null, null, null, Instant.now()));
+    }
+
+    private void reportOutcome(String flagKey, EvaluationResult result, long latencyMs, boolean success,
+            String errorType, EventType type, String diff, String userId) {
+        // A flag that resolved to ERROR_FALLBACK produced no real split; reporting it
+        // would poison
+        // the baseline window with events the control plane never actually assigned.
+        if (result.reason() == EvaluationReason.ERROR_FALLBACK || result.reason() == EvaluationReason.FLAG_NOT_FOUND) {
+            return;
+        }
+        eventReporter.report(new OutcomeEvent(flagKey, result.variant(), type, latencyMs, success,
+                errorType, Map.of(), diff, userId, result.reason(), Instant.now()));
+    }
+
+    private static long elapsedMs(long startNanos) {
+        return (System.nanoTime() - startNanos) / 1_000_000;
+    }
+
+    // ------------------------------------------------------------------
+
+    /** True once the local cache has been populated at least once. */
+    public boolean isReady() {
+        return configCache.isPrimed();
+    }
 }
