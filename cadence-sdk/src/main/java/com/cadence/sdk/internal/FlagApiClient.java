@@ -13,6 +13,7 @@ import java.util.List;
 /**
  * Thin HTTP transport to the control plane's data plane ({@code /sdk/v1/**}).
  *
+ * <p>
  * Authenticates with the service API key on every call. There is no user
  * identity here by design:
  * the SDK reads flag config and writes events, and can do nothing else even if
@@ -56,5 +57,16 @@ public class FlagApiClient {
             // (FlagConfigCache) catches it and keeps serving the last known-good snapshot.
             throw new CadenceSdkException("Failed to fetch flag configuration from control plane", e);
         }
+    }
+
+    /**
+     * Fire-and-forget: the caller has already returned its response to the user.
+     */
+    public void publishEvents(EventBatch batch) {
+        restClient.post()
+                .uri("/sdk/v1/events")
+                .body(batch)
+                .retrieve()
+                .toBodilessEntity();
     }
 }
