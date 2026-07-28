@@ -51,7 +51,60 @@ public class CadenceSdkProperties {
      */
     private Duration requestTimeout = Duration.ofSeconds(3);
 
+    private final Events events = new Events();
     private final CircuitBreaker circuitBreaker = new CircuitBreaker();
+
+    public static class Events {
+        /**
+         * Turn off to evaluate flags without reporting any release-health data.
+         * Rollback automation then has no input.
+         */
+        private boolean enabled = true;
+        /** Events are flushed when the buffer reaches this size... */
+        private int batchSize = 100;
+        /** ...or when this interval elapses, whichever comes first. */
+        private Duration flushInterval = Duration.ofSeconds(2);
+        /**
+         * Hard cap on the in-memory buffer. When the control plane is down and the
+         * buffer fills,
+         * the oldest events are dropped rather than growing the heap without bound.
+         * Losing telemetry
+         * is acceptable; OOM-killing the caller is not.
+         */
+        private int maxBufferSize = 10_000;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public int getBatchSize() {
+            return batchSize;
+        }
+
+        public void setBatchSize(int batchSize) {
+            this.batchSize = batchSize;
+        }
+
+        public Duration getFlushInterval() {
+            return flushInterval;
+        }
+
+        public void setFlushInterval(Duration flushInterval) {
+            this.flushInterval = flushInterval;
+        }
+
+        public int getMaxBufferSize() {
+            return maxBufferSize;
+        }
+
+        public void setMaxBufferSize(int maxBufferSize) {
+            this.maxBufferSize = maxBufferSize;
+        }
+    }
 
     public static class CircuitBreaker {
         /** Percentage of failed config fetches that opens the breaker. */
