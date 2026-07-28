@@ -20,7 +20,7 @@ public class CadenceProperties {
     private final Canary canary = new Canary();
     private final Metrics metrics = new Metrics();
     private final Alerting alerting = new Alerting();
-    private final ExternalMetrics externalMetrics = new ExternalMetrics();
+
 
     public static class Jwt {
         /**
@@ -244,40 +244,6 @@ public class CadenceProperties {
         }
     }
 
-    public static class ExternalMetrics {
-        /**
-         * When enabled, release health can additionally be pulled from Prometheus via
-         * WebClient.
-         */
-        private boolean enabled = false;
-        private String prometheusBaseUrl = "http://localhost:9090";
-        private Duration timeout = Duration.ofSeconds(5);
-
-        public boolean isEnabled() {
-            return enabled;
-        }
-
-        public void setEnabled(boolean enabled) {
-            this.enabled = enabled;
-        }
-
-        public String getPrometheusBaseUrl() {
-            return prometheusBaseUrl;
-        }
-
-        public void setPrometheusBaseUrl(String v) {
-            this.prometheusBaseUrl = v;
-        }
-
-        public Duration getTimeout() {
-            return timeout;
-        }
-
-        public void setTimeout(Duration timeout) {
-            this.timeout = timeout;
-        }
-    }
-
     public String getEnvironment() {
         return environment;
     }
@@ -306,7 +272,4 @@ public class CadenceProperties {
         return alerting;
     }
 
-    public ExternalMetrics getExternalMetrics() {
-        return externalMetrics;
-    }
 }

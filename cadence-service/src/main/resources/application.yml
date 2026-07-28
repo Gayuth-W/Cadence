@@ -111,7 +111,3 @@ cadence:
     # A Slack webhook is a bearer credential. It lives in the environment, never in the repository.
     slack-webhook-url: ${CADENCE_SLACK_WEBHOOK_URL:}
 
-  external-metrics:
-    enabled: false
-    prometheus-base-url: ${CADENCE_PROMETHEUS_URL:http://localhost:9090}
-    timeout: PT5S

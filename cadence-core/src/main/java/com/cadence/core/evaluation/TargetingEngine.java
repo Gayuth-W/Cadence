@@ -95,6 +95,7 @@ public final class TargetingEngine {
 
     private static boolean matches(TargetingRule rule, UserContext ctx) {
         return switch (rule.type()) {
+            // Note: BLOCKLIST rules must be authored with variant=BASELINE
             case ALLOWLIST, BLOCKLIST -> rule.values().contains(ctx.userId());
             case SEGMENT -> rule.values().stream().anyMatch(ctx.segments()::contains);
             case COUNTRY -> ctx.country() != null && rule.values().contains(ctx.country());
