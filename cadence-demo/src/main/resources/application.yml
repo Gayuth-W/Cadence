@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: cadence-demo
+  threads:
+    virtual:
+      enabled: true
+
+server:
+  port: ${DEMO_PORT:8081}
+
+# The entire Cadence integration, from the consuming application's point of view.
+cadence:
+  sdk:
+    enabled: true
+    base-url: ${CADENCE_URL:http://localhost:8080}
+    # A scoped service key: read flags, write events. It cannot force a rollback.
+    api-key: ${CADENCE_API_KEY:cad_development_ZGVtby1rZXktZG8tbm90LXVzZS1pbi1wcm9k}
+    environment: development
+    refresh-interval: PT5S      # snappier than the 15s default so the demo shows changes quickly
+    events:
+      batch-size: 20
+      flush-interval: PT1S
+
+logging:
+  level:
+    com.cadence.sdk: INFO

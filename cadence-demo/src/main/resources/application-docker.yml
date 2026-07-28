@@ -1,0 +1,3 @@
+cadence:
+  sdk:
+    base-url: http://cadence-service:8080
