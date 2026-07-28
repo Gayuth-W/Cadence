@@ -79,6 +79,20 @@ public class CadenceSdkAutoConfiguration {
         return new FlagConfigCache(apiClient, breaker, properties);
     }
 
+    @Bean(destroyMethod = "shutdown")
+    @ConditionalOnMissingBean
+    public EventReporter cadenceEventReporter(FlagApiClient apiClient, CadenceSdkProperties properties) {
+        EventReporter reporter = new EventReporter(apiClient, properties);
+        reporter.start();
+        return reporter;
+    }
+
+    @Bean(destroyMethod = "close")
+    @ConditionalOnMissingBean
+    public ShadowExecutor cadenceShadowExecutor() {
+        return new ShadowExecutor(256);
+    }
+
     @Bean
     @ConditionalOnMissingBean
     public FlagClient flagClient(FlagConfigCache cache,
